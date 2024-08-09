@@ -14,4 +14,12 @@ app.use(express.urlencoded({extended: true, limit: "16kb"}))   //extended true c
 app.use(express.static("public"))
 app.use(cookieParser())
 
+//routes import
+
+import userRouter from "./routes/user.routes.js"
+
+//routes declarartion-> ab router ko lane ke liye middleware lana pdega
+app.use("/api/v1/users", userRouter)
+
+// http://localhost:8000/api/users/register
 export { app }

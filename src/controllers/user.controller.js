@@ -6,14 +6,14 @@ import { ApiResponse } from "../utils/Apiresponse.js";
 import dotenv from 'dotenv'
 
 dotenv.config({
-    path: './.env'
+    path: '../.env'
 })
 
 const generateAccessAndRefreshToken = async(userId) => {
     try {
         const user = await User.findById(userId)
-        const accessToken = user.generateAccessToken()
-        const refreshToken = user.generateRefreshToken()
+        const accessToken = await user.generateAccessToken()
+        const refreshToken = await user.generateRefreshToken()
 
         user.refreshToken = refreshToken
         await user.save({validateBeforeSave: false})
@@ -110,7 +110,7 @@ const loginUser = asyncHandler( async (req,res) => {
 
     const {username, email, password} = req.body
 
-    if(!username || !email){
+    if(!username && !email){
         throw new ApiError(400, "username or emaail is required")
     }
 
@@ -129,9 +129,11 @@ const loginUser = asyncHandler( async (req,res) => {
     }
 
     const {accessToken, refreshToken} = await generateAccessAndRefreshToken(user._id)
+    // console.log(accessToken, refreshToken);
+    
 
     //abhi jo refresh token and acces token generatehua wo user ka details lene ke baad kiye hai hmlog so abhi ye tokens usme add nhi hua hoga to ek rasta hai ki ussi ko update krdiya jye yaa fir ek nya user bna diya jye
-    const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
+    const loggedInUser = await User.findById(user._id)//.select("-password -refreshToken")
 
     const options = {
         httpOnly: true,    //by default koi bhi cookies ko modify krskta hai frontend pe but ye lgane ke baad cookies sirf server se modify hoti hai
@@ -140,13 +142,15 @@ const loginUser = asyncHandler( async (req,res) => {
 
     return res.
     status(200)
-    .cookie("accessToken", accessToken, options)
-    .cookie("refreshToken", refreshToken, options)
+   .cookie("accessToken", accessToken)
+    .cookie("refreshToken", refreshToken)
     .json(
         new ApiResponse(200, {
-            user: loggedInUser, accessToken, refreshToken
+            user: loggedInUser, 
+            accessToken: accessToken, 
+            refreshToken: refreshToken
         },
-        "user logged in successfully"
+       "user logged in successfully"
     )
     )
 
@@ -158,10 +162,15 @@ const logoutUser = asyncHandler(async (req,res) => {
         req.user._id,
         {
             $set: {
-                refreshToken: undefined
+                refreshToken: undefined 
             }
         }
     )
+
+    const options = {
+        httpOnly: true,    //by default koi bhi cookies ko modify krskta hai frontend pe but ye lgane ke baad cookies sirf server se modify hoti hai
+        secure: true    
+    }
 
     return res
     .status(200)

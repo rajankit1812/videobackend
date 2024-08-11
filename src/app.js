@@ -20,6 +20,7 @@ import userRouter from "./routes/user.routes.js"
 
 //routes declarartion-> ab router ko lane ke liye middleware lana pdega
 app.use("/api/v1/users", userRouter)   //jobhi yha milta hai wo prefix bn jta hai url ka fir wo registeruser pe chla jyga
+//postman me agar sirf data bhjna hai to raw option ka use krskte hai but if files bhjni hai to form data me shift hona pdega
 
 // http://localhost:8000/api/users/register
 export { app }

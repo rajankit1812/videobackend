@@ -3,6 +3,11 @@ import {ApiError} from "../utils/ApiError.js"
 import { User } from "../models/user.model.js";
 import {uploadOnCloudinary} from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/Apiresponse.js";
+import dotenv from 'dotenv'
+
+dotenv.config({
+    path: './.env'
+})
 
 const registerUser = asyncHandler( async (req,res) => {
     // res.status(200).json({
@@ -19,7 +24,7 @@ const registerUser = asyncHandler( async (req,res) => {
     //return response
 
     const {fullName, email, username, password} = req.body  //jo bhi details body se aarha hai wo req.body pe miljaata hai 
-    console.log("email: ", email)
+    // console.log("email: ", email)
 
     if(
         [fullName, email, username, password].some((field) => field?.trim() === "")  //raw data bhjna mtlb json me hi bhj do
@@ -27,7 +32,7 @@ const registerUser = asyncHandler( async (req,res) => {
         throw new ApiError(400, "All fields are required")
     }
 
-    const existedUser = User.findOne({
+    const existedUser = await User.findOne({
         $or: [{ username }, { email }]
     })
 
@@ -35,8 +40,15 @@ const registerUser = asyncHandler( async (req,res) => {
         throw new ApiError(409, "User with email or username exists")
     }
 
+    // console.log(req.files)
+
     const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverImageLocalPath= req.files?.coverImage[0]?.path;
+    // const coverImageLocalPath= req.files?.coverImage[0]?.path;
+
+    let coverImageLocalPath;
+    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0){
+        coverImageLocalPath = req.files.coverImage[0].path
+    }
 
     if(!avatarLocalPath){
         throw new ApiError(400, "Avatar file is required")
@@ -45,8 +57,9 @@ const registerUser = asyncHandler( async (req,res) => {
     const avatar = await uploadOnCloudinary(avatarLocalPath)
     const coverImage = await uploadOnCloudinary(coverImageLocalPath)
 
+
     if(!avatar){
-        throw new ApiError(400, "Avatar file is required")
+        throw new ApiError(400, "Avatar file is required again")
     }
 
     const user = await User.create({

@@ -9,6 +9,21 @@ dotenv.config({
     path: './.env'
 })
 
+const generateAccessAndRefreshToken = async(userId) => {
+    try {
+        const user = await User.findById(userId)
+        const accessToken = user.generateAccessToken()
+        const refreshToken = user.generateRefreshToken()
+
+        user.refreshToken = refreshToken
+        await user.save({validateBeforeSave: false})
+
+        return {accessToken, refreshToken}
+    } catch (error) {
+        throw new ApiError(500, "Something went wrong while generating access and refresh token")
+    }
+}
+
 const registerUser = asyncHandler( async (req,res) => {
     // res.status(200).json({
     //     message: "ok"
@@ -85,4 +100,78 @@ const registerUser = asyncHandler( async (req,res) => {
 
 })
 
-export {registerUser}
+const loginUser = asyncHandler( async (req,res) => {
+    //req body -> data
+    //username or email
+    //find the user
+    //password checking
+    //access and refresh token
+    //send secure cookies
+
+    const {username, email, password} = req.body
+
+    if(!username || !email){
+        throw new ApiError(400, "username or emaail is required")
+    }
+
+    const user = await User.findOne({
+        $or: [{username}, {email}]
+    })
+
+    if(!user){
+        throw new ApiError(404, "User does not exist")
+    }
+
+    const isPasswordValid = await user.isPasswordCorrect(password)
+
+    if(!isPasswordValid){
+        throw new ApiError(401, "Password Incorrect")
+    }
+
+    const {accessToken, refreshToken} = await generateAccessAndRefreshToken(user._id)
+
+    //abhi jo refresh token and acces token generatehua wo user ka details lene ke baad kiye hai hmlog so abhi ye tokens usme add nhi hua hoga to ek rasta hai ki ussi ko update krdiya jye yaa fir ek nya user bna diya jye
+    const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
+
+    const options = {
+        httpOnly: true,    //by default koi bhi cookies ko modify krskta hai frontend pe but ye lgane ke baad cookies sirf server se modify hoti hai
+        secure: true    
+    }
+
+    return res.
+    status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+        new ApiResponse(200, {
+            user: loggedInUser, accessToken, refreshToken
+        },
+        "user logged in successfully"
+    )
+    )
+
+})
+
+const logoutUser = asyncHandler(async (req,res) => {
+    //refreshtoken and accesstoken chin lo and then uske user model se bhi refresh token chin lo yaa fir reset krdo
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {
+                refreshToken: undefined
+            }
+        }
+    )
+
+    return res
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(new ApiResponse(200,{}, "User logged out successfully"))
+})
+
+export {
+    registerUser,
+    loginUser,
+    logoutUser
+}

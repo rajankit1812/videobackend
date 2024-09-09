@@ -5,7 +5,7 @@ class ApiError extends Error {
         error = [],
         stack = ""
     ){
-        super(message)
+        super(message)  //message ko to override krna hi krna hai
         this.statuscode = statusCode
         this.data = null
         this.message = message
